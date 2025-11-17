@@ -18,5 +18,10 @@ export default {
     password: env('DB_PASSWORD', ''),
     dialect: env('DB_DIALECT', 'mssql'),
     logging: env('DB_LOGGING', 'false') === 'true'
-  }
+  },
+    vtex: {
+    baseUrl: env('VTEX_BASE_URL', 'https://andesmarpartnerar.myvtex.com'),
+    appKey: env('VTEX_APP_KEY', ''),
+    appToken: env('VTEX_APP_TOKEN', ''),
+  },
 }
