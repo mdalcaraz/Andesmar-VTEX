@@ -1,4 +1,4 @@
-import { calcularMonto } from '../services/andesmar.service.js'
+import { calcularMonto, calcularMontoyDemora } from '../services/andesmar.service.js'
 import { getSkuById } from '../services/vtex.service.js'
 
 export const vtexController = {
@@ -74,7 +74,11 @@ export const vtexController = {
       console.time('[ANDESMAR] Tiempo')
 
       // 4) Consultamos a Andesmar con datos ya enriquecidos desde VTEX
-      const monto = await calcularMonto(payloadAndesmar)
+      // const monto = await calcularMonto(payloadAndesmar)
+      const montoYDemora = await calcularMontoyDemora(payloadAndesmar)
+
+      const monto = montoYDemora.importe;
+      const demora = montoYDemora.demora;
 
       console.timeEnd('[ANDESMAR] Tiempo')
       console.log(`[ANDESMAR] ✅ ImporteTotal=${monto}`)
@@ -92,7 +96,7 @@ export const vtexController = {
             id: 'andesmar-standard',
             name: 'Andesmar Estándar',
             deliveryChannel: 'delivery',
-            shippingEstimate: '3bd',
+            shippingEstimate: demora,
             price: montoCentavos,
           },
         ],
