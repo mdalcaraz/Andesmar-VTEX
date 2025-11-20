@@ -69,3 +69,53 @@ export function validate(req, res, next) {
   }
   return next()
 }
+
+export const validateVtexOrderHookBody = [
+  body('Domain')
+    .exists().withMessage('Domain is required')
+    .bail()
+    .isString().withMessage('Domain must be a string')
+    .bail()
+    .notEmpty().withMessage('Domain cannot be empty'),
+
+  body('OrderId')
+    .exists().withMessage('OrderId is required')
+    .bail()
+    .isString().withMessage('OrderId must be a string')
+    .bail()
+    .notEmpty().withMessage('OrderId cannot be empty'),
+
+  body('State')
+    .exists().withMessage('State is required')
+    .bail()
+    .isString().withMessage('State must be a string')
+    .bail()
+    .notEmpty().withMessage('State cannot be empty'),
+
+  body('LastChange')
+    .exists().withMessage('LastChange is required')
+    .bail()
+    .isString().withMessage('LastChange must be a string')
+    .bail()
+    .isISO8601().withMessage('LastChange must be a valid ISO-8601 timestamp'),
+
+  // Origin debe existir y ser objeto
+  body('Origin')
+    .exists().withMessage('Origin is required')
+    .bail()
+    .isObject().withMessage('Origin must be an object'),
+
+  body('Origin.Account')
+    .exists().withMessage('Origin.Account is required')
+    .bail()
+    .isString().withMessage('Origin.Account must be a string')
+    .bail()
+    .notEmpty().withMessage('Origin.Account cannot be empty'),
+
+  body('Origin.Key')
+    .exists().withMessage('Origin.Key is required')
+    .bail()
+    .isString().withMessage('Origin.Key must be a string')
+    .bail()
+    .notEmpty().withMessage('Origin.Key cannot be empty'),
+]

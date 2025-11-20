@@ -6,7 +6,6 @@ import { requestLogger } from './middlewares/logging.middleware.js'
 import { apiLimiter } from './middlewares/rateLimit.middleware.js'
 import { errorHandler } from './middlewares/error.middleware.js'
 import { notFound } from './middlewares/notFound.middleware.js'
-import config from './config/index.js'
 
 const app = express()
 
