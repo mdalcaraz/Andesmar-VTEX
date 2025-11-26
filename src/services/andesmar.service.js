@@ -15,8 +15,6 @@ export async function calcularMonto(params) {
     if (data?.Codigo !== '200') {
       throw new Error(`Error Andesmar: ${data?.Error || 'Respuesta inválida'}`)
     }
-    console.log(JSON.stringify(data))
-    console.log("calcularMonto: " + data.ImporteTotal);
     return Number(data.ImporteTotal) || 0
   } catch (err) {
     console.error('Error consultando Andesmar:', err.message)

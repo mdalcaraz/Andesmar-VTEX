@@ -157,7 +157,6 @@ export const vtexController = {
     const { Domain, OrderId, LastChange, Origin } = req.body;
     const { Account, Key } = Origin;
     const JsonString = JSON.stringify(req.body, 2)
-    console.log(JsonString)
     res.json({"asd": "SI"});
   },
 
