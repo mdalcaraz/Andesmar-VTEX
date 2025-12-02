@@ -163,6 +163,7 @@ export const vtexController = {
   
   receive: async (req, res, next) => {
     try {
+      console.log(req.body);
       // Validar token del hook
       const auth = req.headers.authorization
       const [scheme, token] = auth.split(' ')
@@ -185,7 +186,7 @@ export const vtexController = {
         OriginAccount: Account,
         OriginKey: Key,
         JsonCompleto: JSON.stringify(req.body),
-        FechaRecepcion: new Date().toISOString(),        // usa el default getdate() si querés
+        FechaRecepcion: new Date().toISOString(),        
         Procesado: false,
         FechaProcesado: null,
       })
