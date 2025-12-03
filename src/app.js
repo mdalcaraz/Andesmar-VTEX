@@ -18,7 +18,9 @@ app.use(express.urlencoded({ extended: true }))
 
 // app.use(requestLogger)
 app.use('/api', apiLimiter, routes)
-
+app.use('/', (req,res)=>{
+    res.send("OK");
+})
 app.use(notFound)
 app.use(errorHandler)
 
