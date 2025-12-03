@@ -162,6 +162,7 @@ export const vtexController = {
 
   
   receive: async (req, res, next) => {
+    console.log("TEST")
     try {
       console.log(req.body);
       // Validar token del hook
@@ -193,8 +194,9 @@ export const vtexController = {
 
       return res.status(200).json({ ok: true })
     } catch (err) {
-      console.error('Error guardando hook de VTEX:', err)
-      next(err)
+      console.error('Error guardando hook de VTEX:', err.message)
+      res.send("No se encontro la información necesaria.");
     }
+
   }
 }

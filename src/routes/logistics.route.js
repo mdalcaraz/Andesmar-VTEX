@@ -10,8 +10,8 @@ const router = Router()
 // VTEX usa "orderForms", pero soportamos también el typo "orderFroms"
 router.post(
   '/vtex/orders/hook',
-  validateVtexOrderHookBody,     
-  validate,                      
+  // validateVtexOrderHookBody,     
+  // validate,                      
   vtexController.receive         
 )
 
