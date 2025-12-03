@@ -69,6 +69,14 @@ export function validate(req, res, next) {
   }
   return next()
 }
+function vtexPingMiddleware(req, res, next) {
+  if (req.body && req.body.hookConfig === 'ping') {
+    console.log('[VTEX] Ping recibido');
+    return res.sendStatus(200);   // Corta ejecución y responde
+  }
+
+  next(); // Continúa el flujo normal
+}
 
 export const validateVtexOrderHookBody = [
   body('Domain')

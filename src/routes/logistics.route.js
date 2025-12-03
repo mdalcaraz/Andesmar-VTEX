@@ -1,8 +1,7 @@
 import { Router } from 'express'
 import { vtexController } from '../controllers/vtex.controller.js'
 import {
-  validateVtexOrderHookBody,
-  validate,
+  vtexPingMiddleware,
 } from '../middlewares/vtexValidators.js'
 
 const router = Router()
@@ -11,7 +10,7 @@ const router = Router()
 router.post(
   '/vtex/orders/hook',
   // validateVtexOrderHookBody,     
-  // validate,                      
+  vtexPingMiddleware,                      
   vtexController.receive         
 )
 
