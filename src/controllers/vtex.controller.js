@@ -163,39 +163,40 @@ export const vtexController = {
   
   receive: async (req, res, next) => {
     console.log("TEST")
-    try {
-      console.log(req.body);
-      // Validar token del hook
-      const auth = req.headers.authorization
-      const [scheme, token] = auth.split(' ')
+    console.log(req.body);
+
+    // try {
+    //   // Validar token del hook
+    //   const auth = req.headers.authorization
+    //   const [scheme, token] = auth.split(' ')
       
-      if (!token || token !== config.vtex.hookAuthToken) {
-        return res.status(401).json({ error: { message: 'Unauthorized' } })
-      }
+    //   if (!token || token !== config.vtex.hookAuthToken) {
+    //     return res.status(401).json({ error: { message: 'Unauthorized' } })
+    //   }
 
-      // Extraer datos del JSON recibido
-      const { Domain, OrderId, LastChange, Origin } = req.body
-      const Account = Origin?.Account ?? null
-      const Key = Origin?.Key ?? null
+    //   // Extraer datos del JSON recibido
+    //   const { Domain, OrderId, LastChange, Origin } = req.body
+    //   const Account = Origin?.Account ?? null
+    //   const Key = Origin?.Key ?? null
 
-      const lastChangeDate = new Date(LastChange)
+    //   const lastChangeDate = new Date(LastChange)
 
-      await db.PedidosDesdeVtex.create({
-        OrderId: OrderId,
-        State: Domain,                     
-        LastChange: lastChangeDate.toISOString(),
-        OriginAccount: Account,
-        OriginKey: Key,
-        JsonCompleto: JSON.stringify(req.body),
-        FechaRecepcion: new Date().toISOString(),        
-        Procesado: false,
-        FechaProcesado: null,
-      })
+    //   await db.PedidosDesdeVtex.create({
+    //     OrderId: OrderId,
+    //     State: Domain,                     
+    //     LastChange: lastChangeDate.toISOString(),
+    //     OriginAccount: Account,
+    //     OriginKey: Key,
+    //     JsonCompleto: JSON.stringify(req.body),
+    //     FechaRecepcion: new Date().toISOString(),        
+    //     Procesado: false,
+    //     FechaProcesado: null,
+    //   })
 
-      return res.status(200).json({ ok: true })
-    } catch (err) {
-      console.error('Error guardando hook de VTEX:', err.message)
-      res.sendStatus(200);
-    }
+    // } catch (err) {
+    //   console.error('Error guardando hook de VTEX:', err.message)
+    // }
+      return res.sendStatus(200);
+
   }
 }
