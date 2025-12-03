@@ -195,8 +195,7 @@ export const vtexController = {
       return res.status(200).json({ ok: true })
     } catch (err) {
       console.error('Error guardando hook de VTEX:', err.message)
-      res.send("No se encontro la información necesaria.");
+      res.sendStatus(200);
     }
-
   }
 }
