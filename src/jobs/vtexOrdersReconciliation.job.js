@@ -14,12 +14,12 @@ async function runOnceAtStartup() {
 }
 
 function registerVtexOrdersCron() {
-  if (!config.vtexCronOrder.enabled) {
+  if (!config.vtexCronGetOrder.enabled) {
     console.log('[VTEX CRON GET ORDERS] Deshabilitado por configuración.');
     return;
   }
 
-  const expression = config.vtexCronOrder.time;
+  const expression = config.vtexCronGetOrder.time;
 
   if (!cron.validate(expression)) {
     console.error(
@@ -30,7 +30,7 @@ function registerVtexOrdersCron() {
   }
 
   console.log(
-    `[VTEX CRON GET ORDERS] Registrando reconciliación de órdenes VTEX con expresión "${expression}" (ventana=${config.vtexCronOrder.window}h).`
+    `[VTEX CRON GET ORDERS] Registrando reconciliación de órdenes VTEX con expresión "${expression}" (ventana=${config.vtexCronGetOrder.window}h).`
   );
 
   // ───────────────────────────────────────────────

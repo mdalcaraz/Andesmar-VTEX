@@ -1,3 +1,4 @@
+//vtexOrdersReconciliation.service.js
 import axios from "axios";
 import config from "../config/index.js";
 import db from "../models/index.js";
@@ -6,9 +7,9 @@ function buildCreationDateFilter(fromDate, toDate) {
   let fromIso;
   let toIso;
 
-  if (config.vtexCronOrder.testWindow == "true") {
-    fromIso = config.vtexCronOrder.testFrom;
-    toIso = config.vtexCronOrder.testTo;
+  if (config.vtexCronGetOrder.testWindow == "true") {
+    fromIso = config.vtexCronGetOrder.testFrom;
+    toIso = config.vtexCronGetOrder.testTo;
   } else {
     fromIso = fromDate.toISOString();
     toIso = toDate.toISOString();
@@ -20,11 +21,11 @@ function buildCreationDateFilter(fromDate, toDate) {
 }
 
 async function listOrdersInWindow({ from, to, page = 1, perPage = 50 }) {
-  if (!config.vtexCronOrder.url) {
+  if (!config.vtexCronGetOrder.url) {
     throw new Error("VTEX baseUrl no está configurada.");
   }
 
-  const url = `${config.vtexCronOrder.url}?page=${page}&per_page=${perPage}&f_creationDate=${buildCreationDateFilter(from, to)}`;
+  const url = `${config.vtexCronGetOrder.url}?page=${page}&per_page=${perPage}&f_creationDate=${buildCreationDateFilter(from, to)}`;
 
   const headers = {
     "X-VTEX-API-AppKey": config.vtex.appKey,
@@ -47,12 +48,12 @@ async function listOrdersInWindow({ from, to, page = 1, perPage = 50 }) {
 }
 
 async function getOrderDetail(orderId) {
-  if (!config.vtexCronOrder.url) {
+  if (!config.vtexCronGetOrder.url) {
     throw new Error("VTEX baseUrl no está configurada.");
   }
 
-  const url = `${config.vtexCronOrder.url}/${orderId}`;
-  // const url = `${config.vtexCronOrder.url}/1580790500001-01`;
+  const url = `${config.vtexCronGetOrder.url}/${orderId}`;
+  // const url = `${config.vtexCronGetOrder.url}/1580790500001-01`;
 
   const headers = {
     "X-VTEX-API-AppKey": config.vtex.appKey,
@@ -84,7 +85,7 @@ export async function reconcileVtexOrders() {
   }
 
   const now = new Date();
-  const windowHours = config.vtexCronOrder.window || 3;
+  const windowHours = config.vtexCronGetOrder.window || 3;
   const from = new Date(now.getTime() - windowHours * 60 * 60 * 1000);
 
   console.log(

@@ -2,6 +2,7 @@ import app from './app.js'
 import config from './config/index.js'
 import db from './models/index.js'
 import './jobs/vtexOrdersReconciliation.job.js';
+import './jobs/vtexOrdersStatusUpdate.job.js';
 
 const port = config.port
 
