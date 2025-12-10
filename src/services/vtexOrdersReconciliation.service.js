@@ -78,7 +78,7 @@ async function getOrderDetail(orderId) {
 export async function reconcileVtexOrders() {
   if (!config.vtex.appKey || !config.vtex.appToken) {
     console.warn(
-      "[VTEX CRON] AppKey/AppToken no configurados, se omite reconciliación."
+      "[VTEX CRON GET ORDERS] AppKey/AppToken no configurados, se omite reconciliación."
     );
     return { processed: 0, inserted: 0, updated: 0 };
   }
@@ -88,7 +88,7 @@ export async function reconcileVtexOrders() {
   const from = new Date(now.getTime() - windowHours * 60 * 60 * 1000);
 
   console.log(
-    `[VTEX CRON] Iniciando reconciliación. Ventana: ${from.toISOString()} -> ${now.toISOString()}`
+    `[VTEX CRON GET ORDERS] Iniciando reconciliación. Ventana: ${from.toISOString()} -> ${now.toISOString()}`
   );
 
   let page = 1;
@@ -105,7 +105,7 @@ export async function reconcileVtexOrders() {
       ordersPage = await listOrdersInWindow({ from, to: now, page, perPage });
     } catch (err) {
       console.error(
-        `[VTEX CRON] Error listando órdenes en página ${page}:`,
+        `[VTEX CRON GET ORDERS] Error listando órdenes en página ${page}:`,
         err?.response?.status,
         err?.response?.data || err.message
       );
@@ -116,13 +116,13 @@ export async function reconcileVtexOrders() {
 
     if (!orders.length) {
       if (page === 1) {
-        console.log("[VTEX CRON] No se encontraron órdenes en la ventana.");
+        console.log("[VTEX CRON GET ORDERS] No se encontraron órdenes en la ventana.");
       }
       break;
     }
 
     console.log(
-      `[VTEX CRON] Página ${page}: ${orders.length} órdenes devueltas.`
+      `[VTEX CRON GET ORDERS] Página ${page}: ${orders.length} órdenes devueltas.`
     );
 
     for (const summary of orders) {
@@ -158,7 +158,7 @@ export async function reconcileVtexOrders() {
         inserted += 1;
       } catch (err) {
         console.error(
-          `[VTEX CRON] Error procesando orderId=${orderId}:`,
+          `[VTEX CRON GET ORDERS] Error procesando orderId=${orderId}:`,
           err?.response?.status,
           err?.response?.data || err.message
         );
@@ -173,7 +173,7 @@ export async function reconcileVtexOrders() {
   }
 
   console.log(
-    `[VTEX CRON] Finalizado. Procesadas=${processed}, Insertadas=${inserted}, Actualizadas=${updated}`
+    `[VTEX CRON GET ORDERS] Finalizado. Procesadas=${processed}, Insertadas=${inserted}, Actualizadas=${updated}`
   );
 
   return { processed, inserted, updated };

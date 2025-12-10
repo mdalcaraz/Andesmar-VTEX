@@ -26,12 +26,12 @@ export default {
     hookAuthToken: env("ANDESMAR_GENERATED_TOKEN", "")
   },
   vtexCronOrder:{
-    enabled: env("VTEX_ORDERS_CRON_ENABLED", true),
-    time: env("VTEX_ORDERS_CRON_EXPRESSION", 45),
-    window: env("VTEX_ORDERS_CRON_WINDOW_HOURS", 3),
-    url: env("VTEX_ORDERS_URL", ""),
-    testWindow: env("VTEX_USE_TEST_WINDOW", false),
-    testFrom: env("VTEX_TEST_FROM", ""),
-    testTo: env("VTEX_TEST_TO", "")
+    enabled: env("VTEX_GET_ORDERS_CRON_ENABLED", true),
+    time: env("VTEX_GET_ORDERS_CRON_EXPRESSION", 45),
+    window: env("VTEX_GET_ORDERS_CRON_WINDOW_HOURS", 3),
+    url: env("VTEX_GET_ORDERS_URL", ""),
+    testWindow: env("VTEX_GET_ORDERS_USE_TEST_WINDOW", false),
+    testFrom: env("VTEX_GET_ORDERS_TEST_FROM", ""),
+    testTo: env("VTEX_GET_ORDERS_TEST_TO", "")
   }
 };
