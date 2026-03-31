@@ -6,13 +6,14 @@ export default {
   nodeEnv: env("NODE_ENV", "development"),
   port: Number(env("PORT", 3000)),
   corsOrigins: env("CORS_ORIGINS", "").split(",").filter(Boolean),
-  externalApi: {
-    baseURL: env("EXTERNAL_API_BASE_URL", ""),
-    apiKey: env("EXTERNAL_API_KEY", ""),
+  andesmar: {
+    baseUrl: env("ANDESMAR_BASE_URL", "https://api.andesmarcargas.com"),
+    insertarPedidoPath: env("ANDESMAR_INSERTAR_PEDIDO_PATH", "/api/InsertPedidoMulti"),
+    timeoutMs: Number(env("ANDESMAR_TIMEOUT_MS", 60000)),
   },
   db: {
     host: env("DB_HOST", "localhost"),
-    port: Number(env("DB_PORT", 1433)),
+    instance: env("DB_INSTANCE", ""),
     database: env("DB_NAME", "my_app_db"),
     username: env("DB_USER", "sa"),
     password: env("DB_PASSWORD", ""),

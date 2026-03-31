@@ -1,4 +1,5 @@
 import axios from 'axios'
+import config from '../config/index.js'
 
 const API_URL = 'https://apitest.andesmarcargas.com/api/CalcularMonto'
 
@@ -46,4 +47,26 @@ export async function calcularMontoyDemora(params) {
     console.error('Error consultando Andesmar:', err.message)
     throw new Error('Fallo al obtener monto desde Andesmar')
   }
+}
+
+/**
+ * Envía un pedido a Andesmar para generar el remito.
+ * @param {object} payload - JSON armado con buildAndesmarPayload
+ * @param {string} usuario - Credencial Usuario de clienteVtex
+ * @param {string} clave   - Credencial Clave de clienteVtex
+ * @returns {object} Respuesta de Andesmar
+ */
+export async function insertarPedido(payload, usuario, clave) {
+  const url = `${config.andesmar.baseUrl}${config.andesmar.insertarPedidoPath}`
+
+  const { data } = await axios.post(url, payload, {
+    headers: {
+      'Content-Type': 'application/json',
+      'Usuario': usuario,
+      'Clave': clave,
+    },
+    timeout: config.andesmar.timeoutMs,
+  })
+
+  return data
 }

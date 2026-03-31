@@ -166,8 +166,8 @@ export const vtexController = {
       console.log(req.body);
       // Validar token del hook
       const auth = req.headers.authorization
-      const [scheme, token] = auth.split(' ')
-      
+      const token = auth?.startsWith('Bearer ') ? auth.slice(7) : null
+
       if (!token || token !== config.vtex.hookAuthToken) {
         return res.status(401).json({ error: { message: 'Unauthorized' } })
       }

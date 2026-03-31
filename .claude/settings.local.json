@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(find /f/Andesmar/Andesmar-VTEX/Codigo/Andesmar-VTEX/src -type f -name *.js)"
+    ]
+  }
+}

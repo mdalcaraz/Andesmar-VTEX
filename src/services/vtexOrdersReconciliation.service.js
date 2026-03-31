@@ -2,6 +2,7 @@
 import axios from "axios";
 import config from "../config/index.js";
 import db from "../models/index.js";
+import { insertarPedido } from "./andesmar.service.js";
 
 function buildCreationDateFilter(fromDate, toDate) {
   let fromIso;
@@ -34,9 +35,7 @@ async function listOrdersInWindow({ from, to, page = 1, perPage = 50 }) {
     "Content-Type": "application/json",
   };
 
-  const response = await axios.get(url, {
-    headers,
-  });
+  const response = await axios.get(url, { headers });
 
   const data = response.data || {};
   const list = Array.isArray(data.list) ? data.list : [];
@@ -53,7 +52,6 @@ async function getOrderDetail(orderId) {
   }
 
   const url = `${config.vtexCronGetOrder.url}/${orderId}`;
-  // const url = `${config.vtexCronGetOrder.url}/1580790500001-01`;
 
   const headers = {
     "X-VTEX-API-AppKey": config.vtex.appKey,
@@ -62,17 +60,81 @@ async function getOrderDetail(orderId) {
     "Content-Type": "application/json",
   };
 
-  const response = await axios.get(url, {
-    headers,
-  });
+  const response = await axios.get(url, { headers });
 
   return response.data;
+}
+
+function buildAndesmarPayload(fullOrder, clienteVtex) {
+  const address = fullOrder.shippingData?.address ?? {};
+  const profile = fullOrder.clientProfileData ?? {};
+
+  let totalPeso = 0;
+  let totalM3 = 0;
+  let totalBultos = 0;
+  const altos = [];
+  const anchos = [];
+  const largos = [];
+
+  for (const item of fullOrder.items ?? []) {
+    const qty = item.quantity ?? 1;
+    const dim = item.additionalInfo?.dimension ?? {};
+    const height = dim.height ?? 10;
+    const width = dim.width ?? 10;
+    const length = dim.length ?? 10;
+    const weight = dim.weight ?? 1;
+
+    totalPeso += weight * qty;
+    totalM3 += (height / 100) * (width / 100) * (length / 100) * qty;
+    totalBultos += qty;
+
+    for (let i = 0; i < qty; i++) {
+      altos.push(height);
+      anchos.push(width);
+      largos.push(length);
+    }
+  }
+
+  // VTEX almacena valores en centavos
+  const valorDeclarado = (fullOrder.value ?? 0) / 100;
+
+  return {
+    CalleRemitente: "",        // TODO: agregar a tabla clienteVtex
+    CalleNroRemitente: "",     // TODO: agregar a tabla clienteVtex
+    CodigoPostalRemitente: clienteVtex.CodigoPostalRemitente,
+    NombreApellidoDestinatario: `${profile.firstName ?? ""} ${profile.lastName ?? ""}`.trim(),
+    CodigoPostalDestinatario: address.postalCode ?? "",
+    CalleDestinatario: address.street ?? "",
+    CalleNroDestinatario: address.number ?? "",
+    TelefonoDestinatario: profile.phone ?? "",
+    MailDestinatario: profile.email ?? "",
+    NroRemito: fullOrder.orderId,
+    Bultos: totalBultos,
+    Peso: totalPeso || 1,
+    ValorDeclarado: valorDeclarado || 10000,
+    M3: totalM3 || 0.001,
+    Alto: altos,
+    Ancho: anchos,
+    Largo: largos,
+    Observaciones: "",
+    ModalidadEntrega: clienteVtex.ModalidadEntregaID,
+    UnidadVenta: clienteVtex.CodigoAgrupacion,
+    servicio: {
+      EsFletePagoDestino: clienteVtex.EsFletePagoDestino,
+      EsRemitoconformado: clienteVtex.EsRemitoconformado,
+    },
+    logueo: {
+      Usuario: clienteVtex.Usuario,
+      Clave: clienteVtex.Clave,
+      CodigoCliente: clienteVtex.CodigoCliente,
+    },
+  };
 }
 
 /**
  * Recorre la ventana de tiempo y:
  * - Inserta pedidos que no estén en la DB.
- * - Opcionalmente actualiza estado / timestamps de pedidos existentes.
+ * - Actualiza estado / timestamps de pedidos existentes si cambiaron.
  *
  * Devuelve un resumen con contadores.
  */
@@ -132,16 +194,50 @@ export async function reconcileVtexOrders() {
 
       try {
         const existing = await db.PedidosDesdeVtex.findOne({
-          where: { orderId }, 
+          where: { OrderId: orderId },
         });
 
         if (existing) {
-          // Si querés actualizar estado/fechas, podrías hacer algo tipo:
+          const summaryLastChange = new Date(summary.lastChange).toISOString();
+          if (existing.LastChange === summaryLastChange) {
+            continue; // Sin cambios, saltear
+          }
+
+          const fullOrder = await getOrderDetail(orderId);
+          await existing.update({
+            State: fullOrder.status || "unknown",
+            LastChange: new Date(fullOrder.lastChange).toISOString(),
+            JsonCompleto: JSON.stringify(fullOrder),
+          });
+          updated += 1;
+
+          const originAccount = fullOrder.marketplace?.name || fullOrder.hostname || null;
+          const clienteVtex = await db.ClienteVtex.findOne({
+            where: { OriginAccount: originAccount, Activo: true },
+          });
+
+          if (!clienteVtex) {
+            console.warn(
+              `[VTEX CRON GET ORDERS] No se encontró ClienteVtex para OriginAccount="${originAccount}" (orderId=${orderId})`
+            );
+            continue;
+          }
+
+          const andesmarPayload = buildAndesmarPayload(fullOrder, clienteVtex);
+          // console.log(
+          //   `[ANDESMAR PAYLOAD] orderId=${orderId}:`,
+          //   JSON.stringify(andesmarPayload, null, 2)
+          // );
+          try {
+            const respuesta = await insertarPedido(andesmarPayload, clienteVtex.Usuario, clienteVtex.Clave);
+            console.log(`[ANDESMAR] Pedido enviado OK orderId=${orderId}:`, JSON.stringify(respuesta));
+          } catch (errEnvio) {
+            console.error(`[ANDESMAR] Error enviando pedido orderId=${orderId}:`, errEnvio.message);
+          }
           continue;
         }
 
         const fullOrder = await getOrderDetail(orderId);
-
         const lastChangeDate = new Date(fullOrder.lastChange);
         const recepcion = new Date(fullOrder.creationDate);
 
@@ -149,14 +245,34 @@ export async function reconcileVtexOrders() {
           OrderId: fullOrder.orderId,
           State: fullOrder.status || "unknown",
           LastChange: lastChangeDate.toISOString(),
-          OriginAccount:
-            fullOrder.marketplace?.name || fullOrder.hostname || null,
+          OriginAccount: fullOrder.marketplace?.name || fullOrder.hostname || null,
           OriginKey: fullOrder.orderGroup || fullOrder.sequence || null,
           JsonCompleto: JSON.stringify(fullOrder),
           FechaRecepcion: recepcion.toISOString(),
         });
 
         inserted += 1;
+
+        // Buscar cliente asociado por OriginAccount para armar payload Andesmar
+        const originAccount = fullOrder.marketplace?.name || fullOrder.hostname || null;
+        const clienteVtex = await db.ClienteVtex.findOne({
+          where: { OriginAccount: originAccount, Activo: true },
+        });
+
+        if (!clienteVtex) {
+          console.warn(
+            `[VTEX CRON GET ORDERS] No se encontró ClienteVtex para OriginAccount="${originAccount}" (orderId=${orderId})`
+          );
+          continue;
+        }
+
+        const andesmarPayload = buildAndesmarPayload(fullOrder, clienteVtex);
+        // console.log(
+        //   `[ANDESMAR PAYLOAD] orderId=${orderId}:`,
+        //   JSON.stringify(andesmarPayload, null, 2)
+        // );
+        // TODO: enviar andesmarPayload al endpoint de Andesmar cuando esté disponible
+
       } catch (err) {
         console.error(
           `[VTEX CRON GET ORDERS] Error procesando orderId=${orderId}:`,

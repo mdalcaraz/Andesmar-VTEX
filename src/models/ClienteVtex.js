@@ -58,6 +58,10 @@ const ClienteVtex = sequelize.define(
       type: DataTypes.BOOLEAN, // 0/1
       allowNull: false,
     },
+    OriginAccount: {
+      type: DataTypes.STRING(100), // DataType=27, LengthSet=100
+      allowNull: true,
+    },
   },
   {
     tableName: 'clienteVtex', // 👈 poné exactamente el nombre físico de la tabla
