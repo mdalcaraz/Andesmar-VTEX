@@ -60,20 +60,19 @@ export const vtexController = {
         where: { Seller: req.body.items?.[0]?.seller },
       })
 
+      if (!clienteVtex) {
+        return res.status(422).json({ error: { message: `Seller no configurado: ${req.body.items?.[0]?.seller}` } })
+      }
+
       const CONFIG = {
-        CodigoPostalRemitente: '1870',
-        ModalidadEntregaID: 2,
-        CodigoAgrupacion: 13,
-            "logueo": {
-        "Usuario": "ECS4083",
-        "Clave": "ECS4083",
-        "CodigoCliente": "4083"
-    },
-        // logueo: {      //cuando tenga saldo
-        //   Usuario: clienteVtex.Usuario,
-        //   Clave: clienteVtex.Clave,
-        //   CodigoCliente: clienteVtex.CodigoCliente,
-        // },
+        CodigoPostalRemitente: clienteVtex.CodigoPostalRemitente,
+        ModalidadEntregaID: clienteVtex.ModalidadEntregaID,
+        CodigoAgrupacion: clienteVtex.CodigoAgrupacion,
+        logueo: {
+          Usuario: clienteVtex.Usuario,
+          Clave: clienteVtex.Clave,
+          CodigoCliente: clienteVtex.CodigoCliente,
+        },
       }
 
       const payloadAndesmar = {

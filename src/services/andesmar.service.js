@@ -1,7 +1,7 @@
 import axios from 'axios'
 import config from '../config/index.js'
 
-const API_URL = 'https://apitest.andesmarcargas.com/api/CalcularMonto'
+const API_URL = config.andesmar.calcularMontoUrl
 
 /**
  * Consulta Andesmar y devuelve el monto total del envío.

@@ -45,7 +45,7 @@ const PedidosDesdeVtex = sequelize.define(
       defaultValue: false,
     },
     FechaProcesado: {
-      type: DataTypes.DATE, // DataType=19, AllowNull=1
+      type: DataTypes.STRING(24),
       allowNull: true,
     },
   },

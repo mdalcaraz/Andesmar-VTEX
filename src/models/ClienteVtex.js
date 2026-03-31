@@ -58,6 +58,14 @@ const ClienteVtex = sequelize.define(
       type: DataTypes.BOOLEAN, // 0/1
       allowNull: false,
     },
+    CalleRemitente: {
+      type: DataTypes.STRING(150),
+      allowNull: true,
+    },
+    CalleNroRemitente: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+    },
     OriginAccount: {
       type: DataTypes.STRING(100), // DataType=27, LengthSet=100
       allowNull: true,

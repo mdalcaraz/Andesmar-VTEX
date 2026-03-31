@@ -9,6 +9,7 @@ export default {
   andesmar: {
     baseUrl: env("ANDESMAR_BASE_URL", "https://api.andesmarcargas.com"),
     insertarPedidoPath: env("ANDESMAR_INSERTAR_PEDIDO_PATH", "/api/InsertPedidoMulti"),
+    calcularMontoUrl: env("ANDESMAR_CALCULAR_MONTO_URL", "https://apitest.andesmarcargas.com/api/CalcularMonto"),
     timeoutMs: Number(env("ANDESMAR_TIMEOUT_MS", 60000)),
   },
   db: {
