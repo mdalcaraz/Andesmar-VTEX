@@ -4,6 +4,13 @@ import config from "../config/index.js";
 import db from "../models/index.js";
 import { insertarPedido } from "./andesmar.service.js";
 
+// Devuelve la fecha/hora local del servidor como string ISO sin Z
+function nowLocal() {
+  const date = new Date();
+  const offset = date.getTimezoneOffset() * 60000;
+  return new Date(date.getTime() - offset).toISOString().slice(0, 23);
+}
+
 function buildCreationDateFilter(fromDate, toDate) {
   let fromIso;
   let toIso;
@@ -240,7 +247,7 @@ export async function reconcileVtexOrders() {
               const andesmarPayload = buildAndesmarPayload(fullOrder, clienteVtex);
               const respuesta = await insertarPedido(andesmarPayload, clienteVtex.Usuario, clienteVtex.Clave);
               console.log(`[ANDESMAR] Pedido enviado OK orderId=${orderId}:`, JSON.stringify(respuesta));
-              await existing.update({ Procesado: true, FechaProcesado: new Date().toISOString() });
+              await existing.update({ Procesado: true, FechaProcesado: nowLocal() });
             } catch (errEnvio) {
               console.error(`[ANDESMAR] Error enviando pedido orderId=${orderId}:`, errEnvio.message);
             }
@@ -251,17 +258,20 @@ export async function reconcileVtexOrders() {
 
         const fullOrder = await getOrderDetail(orderId);
         const lastChangeDate = new Date(fullOrder.lastChange);
-        const recepcion = new Date(fullOrder.creationDate);
 
-        const record = await db.PedidosDesdeVtex.create({
-          OrderId: fullOrder.orderId,
-          State: fullOrder.status || "unknown",
-          LastChange: lastChangeDate.toISOString(),
-          OriginAccount: fullOrder.marketplace?.name || fullOrder.hostname || null,
-          OriginKey: fullOrder.orderGroup || fullOrder.sequence || null,
-          JsonCompleto: JSON.stringify(fullOrder),
-          FechaRecepcion: recepcion.toISOString(),
+        const [record, created] = await db.PedidosDesdeVtex.findOrCreate({
+          where: { OrderId: fullOrder.orderId },
+          defaults: {
+            State: fullOrder.status || "unknown",
+            LastChange: lastChangeDate.toISOString(),
+            OriginAccount: fullOrder.marketplace?.name || fullOrder.hostname || null,
+            OriginKey: fullOrder.orderGroup || fullOrder.sequence || null,
+            JsonCompleto: JSON.stringify(fullOrder),
+            FechaRecepcion: nowLocal(),
+          },
         });
+
+        if (!created) continue; // otra instancia del cron ya lo insertó
 
         inserted += 1;
 
@@ -281,7 +291,7 @@ export async function reconcileVtexOrders() {
           const andesmarPayload = buildAndesmarPayload(fullOrder, clienteVtex);
           const respuesta = await insertarPedido(andesmarPayload, clienteVtex.Usuario, clienteVtex.Clave);
           console.log(`[ANDESMAR] Pedido enviado OK orderId=${orderId}:`, JSON.stringify(respuesta));
-          await record.update({ Procesado: true, FechaProcesado: new Date().toISOString() });
+          await record.update({ Procesado: true, FechaProcesado: nowLocal() });
         } catch (errEnvio) {
           console.error(`[ANDESMAR] Error enviando pedido orderId=${orderId}:`, errEnvio.message);
         }

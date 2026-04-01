@@ -59,6 +59,10 @@ export async function calcularMontoyDemora(params) {
 export async function insertarPedido(payload, usuario, clave) {
   const url = `${config.andesmar.baseUrl}${config.andesmar.insertarPedidoPath}`
 
+  console.log(`[ANDESMAR] POST ${url}`)
+  console.log('[ANDESMAR] Headers:', { Usuario: usuario, Clave: clave })
+  console.log('[ANDESMAR] Payload:', JSON.stringify(payload, null, 2))
+
   const { data } = await axios.post(url, payload, {
     headers: {
       'Content-Type': 'application/json',
@@ -67,6 +71,8 @@ export async function insertarPedido(payload, usuario, clave) {
     },
     timeout: config.andesmar.timeoutMs,
   })
+
+  console.log('[ANDESMAR] Respuesta:', JSON.stringify(data, null, 2))
 
   return data
 }
