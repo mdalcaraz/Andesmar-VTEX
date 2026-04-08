@@ -3,6 +3,7 @@ import axios from "axios";
 import config from "../config/index.js";
 import db from "../models/index.js";
 import { insertarPedido } from "./andesmar.service.js";
+import { resolveVtexCredentials } from "./vtex.service.js";
 
 // Devuelve la fecha/hora local del servidor como string ISO sin Z
 function nowLocal() {
@@ -28,21 +29,18 @@ function buildCreationDateFilter(fromDate, toDate) {
   return encodeURIComponent(raw);
 }
 
-async function listOrdersInWindow({ from, to, page = 1, perPage = 50 }) {
-  if (!config.vtexCronGetOrder.url) {
-    throw new Error("VTEX baseUrl no está configurada.");
+/**
+ * Lista órdenes de VTEX en una ventana de tiempo.
+ * Usa las credenciales y URL específicas de la cuenta.
+ */
+async function listOrdersInWindow({ from, to, page = 1, perPage = 50, getOrdersUrl, vtexHeaders }) {
+  if (!getOrdersUrl) {
+    throw new Error("VtexGetOrdersUrl no está configurada para esta cuenta.");
   }
 
-  const url = `${config.vtexCronGetOrder.url}?page=${page}&per_page=${perPage}&f_creationDate=${buildCreationDateFilter(from, to)}`;
+  const url = `${getOrdersUrl}?page=${page}&per_page=${perPage}&f_creationDate=${buildCreationDateFilter(from, to)}`;
 
-  const headers = {
-    "X-VTEX-API-AppKey": config.vtex.appKey,
-    "X-VTEX-API-AppToken": config.vtex.appToken,
-    Accept: "application/json",
-    "Content-Type": "application/json",
-  };
-
-  const response = await axios.get(url, { headers });
+  const response = await axios.get(url, { headers: vtexHeaders });
 
   const data = response.data || {};
   const list = Array.isArray(data.list) ? data.list : [];
@@ -53,21 +51,16 @@ async function listOrdersInWindow({ from, to, page = 1, perPage = 50 }) {
   };
 }
 
-async function getOrderDetail(orderId) {
-  if (!config.vtexCronGetOrder.url) {
-    throw new Error("VTEX baseUrl no está configurada.");
+/**
+ * Obtiene el detalle completo de una orden de VTEX.
+ */
+async function getOrderDetail(orderId, getOrdersUrl, vtexHeaders) {
+  if (!getOrdersUrl) {
+    throw new Error("VtexGetOrdersUrl no está configurada para esta cuenta.");
   }
 
-  const url = `${config.vtexCronGetOrder.url}/${orderId}`;
-
-  const headers = {
-    "X-VTEX-API-AppKey": config.vtex.appKey,
-    "X-VTEX-API-AppToken": config.vtex.appToken,
-    Accept: "application/json",
-    "Content-Type": "application/json",
-  };
-
-  const response = await axios.get(url, { headers });
+  const url = `${getOrdersUrl}/${orderId}`;
+  const response = await axios.get(url, { headers: vtexHeaders });
 
   return response.data;
 }
@@ -143,31 +136,25 @@ function buildAndesmarPayload(fullOrder, clienteVtex) {
 }
 
 /**
- * Recorre la ventana de tiempo y:
- * - Inserta pedidos que no estén en la DB.
- * - Actualiza estado / timestamps de pedidos existentes si cambiaron.
+ * Reconcilia órdenes de UNA cuenta VTEX específica.
+ * Devuelve contadores de la ejecución.
  *
- * Devuelve un resumen con contadores.
+ * @param {{ appKey: string, appToken: string, getOrdersUrl: string, label: string }} vtexAccount
+ * @param {{ from: Date, to: Date }} window
  */
-export async function reconcileVtexOrders() {
-  if (!config.vtex.appKey || !config.vtex.appToken) {
-    console.warn(
-      "[VTEX CRON GET ORDERS] AppKey/AppToken no configurados, se omite reconciliación."
-    );
-    return { processed: 0, inserted: 0, updated: 0 };
-  }
+async function reconcileAccount(vtexAccount, { from, to }) {
+  const { appKey, appToken, getOrdersUrl, label } = vtexAccount;
+  const LOG = `[VTEX CRON GET ORDERS][${label}]`;
 
-  const now = new Date();
-  const windowHours = config.vtexCronGetOrder.window || 3;
-  const from = new Date(now.getTime() - windowHours * 60 * 60 * 1000);
-
-  console.log(
-    `[VTEX CRON GET ORDERS] Iniciando reconciliación. Ventana: ${from.toISOString()} -> ${now.toISOString()}`
-  );
+  const vtexHeaders = {
+    "X-VTEX-API-AppKey": appKey,
+    "X-VTEX-API-AppToken": appToken,
+    Accept: "application/json",
+    "Content-Type": "application/json",
+  };
 
   let page = 1;
   const perPage = 50;
-
   let processed = 0;
   let inserted = 0;
   let updated = 0;
@@ -176,10 +163,10 @@ export async function reconcileVtexOrders() {
     let ordersPage;
 
     try {
-      ordersPage = await listOrdersInWindow({ from, to: now, page, perPage });
+      ordersPage = await listOrdersInWindow({ from, to, page, perPage, getOrdersUrl, vtexHeaders });
     } catch (err) {
       console.error(
-        `[VTEX CRON GET ORDERS] Error listando órdenes en página ${page}:`,
+        `${LOG} Error listando órdenes en página ${page}:`,
         err?.response?.status,
         err?.response?.data || err.message
       );
@@ -190,14 +177,12 @@ export async function reconcileVtexOrders() {
 
     if (!orders.length) {
       if (page === 1) {
-        console.log("[VTEX CRON GET ORDERS] No se encontraron órdenes en la ventana.");
+        console.log(`${LOG} No se encontraron órdenes en la ventana.`);
       }
       break;
     }
 
-    console.log(
-      `[VTEX CRON GET ORDERS] Página ${page}: ${orders.length} órdenes devueltas.`
-    );
+    console.log(`${LOG} Página ${page}: ${orders.length} órdenes devueltas.`);
 
     for (const summary of orders) {
       processed += 1;
@@ -219,7 +204,7 @@ export async function reconcileVtexOrders() {
 
           // Si hubo cambios, actualizar datos del pedido
           if (!sinCambios) {
-            const fullOrder = await getOrderDetail(orderId);
+            const fullOrder = await getOrderDetail(orderId, getOrdersUrl, vtexHeaders);
             await existing.update({
               State: fullOrder.status || "unknown",
               LastChange: new Date(fullOrder.lastChange).toISOString(),
@@ -230,7 +215,7 @@ export async function reconcileVtexOrders() {
 
           // Si aún no fue enviado a Andesmar, intentar envío
           if (!existing.Procesado) {
-            const fullOrder = await getOrderDetail(orderId);
+            const fullOrder = await getOrderDetail(orderId, getOrdersUrl, vtexHeaders);
             const originAccount = fullOrder.marketplace?.name || fullOrder.hostname || null;
             const clienteVtex = await db.ClienteVtex.findOne({
               where: { OriginAccount: originAccount, Activo: true },
@@ -238,7 +223,7 @@ export async function reconcileVtexOrders() {
 
             if (!clienteVtex) {
               console.warn(
-                `[VTEX CRON GET ORDERS] No se encontró ClienteVtex para OriginAccount="${originAccount}" (orderId=${orderId})`
+                `${LOG} No se encontró ClienteVtex para OriginAccount="${originAccount}" (orderId=${orderId})`
               );
               continue;
             }
@@ -256,7 +241,8 @@ export async function reconcileVtexOrders() {
           continue;
         }
 
-        const fullOrder = await getOrderDetail(orderId);
+        // Pedido nuevo: insertar y enviar a Andesmar
+        const fullOrder = await getOrderDetail(orderId, getOrdersUrl, vtexHeaders);
         const lastChangeDate = new Date(fullOrder.lastChange);
 
         const [record, created] = await db.PedidosDesdeVtex.findOrCreate({
@@ -282,7 +268,7 @@ export async function reconcileVtexOrders() {
 
         if (!clienteVtex) {
           console.warn(
-            `[VTEX CRON GET ORDERS] No se encontró ClienteVtex para OriginAccount="${originAccount}" (orderId=${orderId})`
+            `${LOG} No se encontró ClienteVtex para OriginAccount="${originAccount}" (orderId=${orderId})`
           );
           continue;
         }
@@ -298,7 +284,7 @@ export async function reconcileVtexOrders() {
 
       } catch (err) {
         console.error(
-          `[VTEX CRON GET ORDERS] Error procesando orderId=${orderId}:`,
+          `${LOG} Error procesando orderId=${orderId}:`,
           err?.response?.status,
           err?.response?.data || err.message
         );
@@ -312,9 +298,91 @@ export async function reconcileVtexOrders() {
     page += 1;
   }
 
+  return { processed, inserted, updated };
+}
+
+/**
+ * Obtiene las cuentas VTEX únicas configuradas en la DB.
+ * Deduplica por AppKey+URL para evitar llamadas repetidas al mismo marketplace.
+ * Cae en fallback a las variables de entorno si la cuenta no tiene credenciales en DB.
+ */
+async function resolveVtexAccounts() {
+  const clientes = await db.ClienteVtex.findAll({ where: { Activo: true } });
+
+  const seen = new Set();
+  const accounts = [];
+
+  for (const cliente of clientes) {
+    const creds = resolveVtexCredentials(cliente);
+    const { appKey, appToken, getOrdersUrl, baseUrl } = creds;
+
+    if (!appKey || !appToken || !getOrdersUrl) {
+      console.warn(
+        `[VTEX CRON GET ORDERS] OriginAccount="${cliente.OriginAccount}" sin credenciales VTEX completas, se omite.`
+      );
+      continue;
+    }
+
+    const dedupeKey = `${appKey}::${getOrdersUrl}`;
+    if (seen.has(dedupeKey)) continue;
+    seen.add(dedupeKey);
+
+    accounts.push({
+      appKey,
+      appToken,
+      baseUrl,
+      getOrdersUrl,
+      label: cliente.OriginAccount || baseUrl || appKey.slice(0, 20),
+    });
+  }
+
+  return accounts;
+}
+
+/**
+ * Recorre todos los marketplaces/cuentas VTEX activos y para cada uno:
+ * - Consulta órdenes en la ventana de tiempo.
+ * - Inserta pedidos nuevos.
+ * - Actualiza pedidos existentes si cambiaron.
+ * - Envía a Andesmar los no procesados.
+ *
+ * Devuelve un resumen global con contadores.
+ */
+export async function reconcileVtexOrders() {
+  const accounts = await resolveVtexAccounts();
+
+  if (!accounts.length) {
+    console.warn("[VTEX CRON GET ORDERS] No hay cuentas VTEX con credenciales completas configuradas.");
+    return { processed: 0, inserted: 0, updated: 0 };
+  }
+
+  const now = new Date();
+  const windowHours = config.vtexCronGetOrder.window || 3;
+  const from = new Date(now.getTime() - windowHours * 60 * 60 * 1000);
+
   console.log(
-    `[VTEX CRON GET ORDERS] Finalizado. Procesadas=${processed}, Insertadas=${inserted}, Actualizadas=${updated}`
+    `[VTEX CRON GET ORDERS] Iniciando reconciliación para ${accounts.length} cuenta(s). Ventana: ${from.toISOString()} -> ${now.toISOString()}`
   );
 
-  return { processed, inserted, updated };
+  let totalProcessed = 0;
+  let totalInserted = 0;
+  let totalUpdated = 0;
+
+  for (const account of accounts) {
+    console.log(`[VTEX CRON GET ORDERS] Procesando cuenta: ${account.label}`);
+    try {
+      const { processed, inserted, updated } = await reconcileAccount(account, { from, to: now });
+      totalProcessed += processed;
+      totalInserted += inserted;
+      totalUpdated += updated;
+    } catch (err) {
+      console.error(`[VTEX CRON GET ORDERS] Error en cuenta ${account.label}:`, err.message);
+    }
+  }
+
+  console.log(
+    `[VTEX CRON GET ORDERS] Finalizado. Cuentas=${accounts.length}, Procesadas=${totalProcessed}, Insertadas=${totalInserted}, Actualizadas=${totalUpdated}`
+  );
+
+  return { processed: totalProcessed, inserted: totalInserted, updated: totalUpdated };
 }

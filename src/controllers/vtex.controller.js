@@ -1,5 +1,5 @@
 import { calcularMontoyDemora } from '../services/andesmar.service.js'
-import { getSkuById } from '../services/vtex.service.js'
+import { getSkuById, createVtexClient, resolveVtexCredentials } from '../services/vtex.service.js'
 import db from '../models/index.js'
 import config from '../config/index.js'
 
@@ -7,11 +7,23 @@ export const vtexController = {
   getPrice: async (req, res, next) => {
     try {
       const { items, postalCode, country } = req.body
-      console.log('[VTEX] 🚚 Nueva simulación recibida:', { postalCode, items })
+      console.log('[VTEX] Nueva simulación recibida:', { postalCode, items })
 
-      // 1) Traemos info de cada item desde VTEX en paralelo
+      // 1) Buscamos la configuración del seller para obtener credenciales VTEX correctas
+      const clienteVtex = await db.ClienteVtex.findOne({
+        where: { Seller: items?.[0]?.seller },
+      })
+
+      if (!clienteVtex) {
+        return res.status(422).json({ error: { message: `Seller no configurado: ${items?.[0]?.seller}` } })
+      }
+
+      const vtexCreds = resolveVtexCredentials(clienteVtex)
+      const vtexClient = createVtexClient(vtexCreds)
+
+      // 2) Traemos info de cada item desde VTEX en paralelo con las credenciales del seller
       const skuDetails = await Promise.all(
-        items.map((it) => getSkuById(it.id))
+        items.map((it) => getSkuById(it.id, vtexClient))
       )
 
       // 2) Calculamos peso total, M3 total y armamos arrays de alto/ancho/largo
@@ -56,14 +68,6 @@ export const vtexController = {
         }
       })
       
-      const clienteVtex = await db.ClienteVtex.findOne({
-        where: { Seller: req.body.items?.[0]?.seller },
-      })
-
-      if (!clienteVtex) {
-        return res.status(422).json({ error: { message: `Seller no configurado: ${req.body.items?.[0]?.seller}` } })
-      }
-
       const CONFIG = {
         CodigoPostalRemitente: clienteVtex.CodigoPostalRemitente,
         ModalidadEntregaID: clienteVtex.ModalidadEntregaID,

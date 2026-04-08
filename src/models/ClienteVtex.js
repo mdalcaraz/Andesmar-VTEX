@@ -70,6 +70,23 @@ const ClienteVtex = sequelize.define(
       type: DataTypes.STRING(100), // DataType=27, LengthSet=100
       allowNull: true,
     },
+    // Credenciales VTEX por cuenta (multi-tenant)
+    VtexBaseUrl: {
+      type: DataTypes.STRING(200), // e.g. https://mitienda.myvtex.com
+      allowNull: true,
+    },
+    VtexAppKey: {
+      type: DataTypes.STRING(150),
+      allowNull: true,
+    },
+    VtexAppToken: {
+      type: DataTypes.STRING(300),
+      allowNull: true,
+    },
+    VtexGetOrdersUrl: {
+      type: DataTypes.STRING(200), // e.g. https://mitienda.vtexcommercestable.com.br/api/oms/pvt/orders
+      allowNull: true,
+    },
   },
   {
     tableName: 'clienteVtex', // 👈 poné exactamente el nombre físico de la tabla

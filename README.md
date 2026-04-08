@@ -71,10 +71,10 @@ Dirección y datos del destinatario (nombre, CP, calle, teléfono, mail, provinc
 En la tabla `PedidosDesdeVtex` de la base de datos SQL Server. Se almacena el JSON completo del pedido tal como lo entrega VTEX, junto con el estado de procesamiento.
 
 **¿Cómo se configura un nuevo cliente/tienda?**
-Se debe insertar un registro en la tabla `clienteVtex` con las credenciales de Andesmar, el código postal remitente, la modalidad de entrega, y el identificador de cuenta VTEX (`OriginAccount`). No requiere cambios en el código.
+Se inserta una fila en la tabla `clienteVtex` con las credenciales Andesmar, el código postal remitente, la modalidad de entrega, la cuenta VTEX (`OriginAccount`) y las credenciales VTEX de esa cuenta (`VtexBaseUrl`, `VtexAppKey`, `VtexAppToken`, `VtexGetOrdersUrl`). No requiere cambios en el código ni en el `.env`, y el cambio toma efecto en la próxima ejecución del cron.
 
-**¿El sistema soporta múltiples tiendas o sellers?**
-Sí. La tabla `clienteVtex` puede tener múltiples registros, uno por cada tienda o seller configurado. El sistema selecciona automáticamente la configuración correcta según el pedido recibido.
+**¿El sistema soporta múltiples tiendas?**
+Sí. El sistema es multi-tenant: cada fila de `clienteVtex` representa una cuenta VTEX independiente con sus propias credenciales y configuración Andesmar. El cron de reconciliación detecta automáticamente todas las cuentas activas y las procesa en secuencia, deduplicando si varias filas comparten el mismo marketplace VTEX. Los webhooks funcionan con una URL única compartida; cada tienda apunta su webhook al mismo endpoint.
 
 **¿Qué tecnologías usa el sistema?**
 Node.js con Express, Sequelize ORM sobre SQL Server, y comunicación HTTP con las APIs de VTEX y Andesmar mediante axios.
@@ -86,7 +86,7 @@ En la salida estándar del proceso (consola/stdout). Para ambientes productivos 
 
 ## Checklist de pasaje a producción
 
-Antes de pasar a un ambiente de test o producción, verificar y actualizar las siguientes variables en el archivo `.env`:
+**Variables de entorno (`.env`):**
 
 | Variable | Valor en desarrollo | Acción para producción |
 |---|---|---|
@@ -95,6 +95,15 @@ Antes de pasar a un ambiente de test o producción, verificar y actualizar las s
 | `ANDESMAR_GENERATED_TOKEN` | `tokendePrueba` | Reemplazar por un token seguro generado ad-hoc |
 | `NODE_ENV` | `development` | Cambiar a `production` |
 | `DB_HOST` / `DB_INSTANCE` | Instancia local | Apuntar a la instancia SQL Server de producción |
+
+**Tabla `clienteVtex` (por cada tienda):**
+
+| Campo | Acción |
+|---|---|
+| `VtexBaseUrl` | Completar con la URL base de la cuenta VTEX productiva |
+| `VtexAppKey` / `VtexAppToken` | Completar con las credenciales de la cuenta VTEX productiva |
+| `VtexGetOrdersUrl` | Completar con la URL del endpoint de órdenes productivo |
+| `Activo` | Verificar que esté en `1` |
 
 ---
 
@@ -119,9 +128,15 @@ El sistema requiere dos tablas en la base de datos. La estructura esperada es:
 | `EsRemitoconformado` | BIT | Remito conformado |
 | `CalleRemitente` | VARCHAR(150) | Calle del remitente |
 | `CalleNroRemitente` | INT | Número de calle del remitente |
-| `OriginAccount` | VARCHAR(100) | Cuenta VTEX asociada |
+| `OriginAccount` | VARCHAR(100) | Cuenta VTEX asociada (usada para identificar el pedido en el webhook y el cron) |
+| `VtexBaseUrl` | VARCHAR(200) | URL base de la cuenta VTEX. Ej: `https://mitienda.myvtex.com` |
+| `VtexAppKey` | VARCHAR(150) | AppKey de la API VTEX para esta cuenta |
+| `VtexAppToken` | VARCHAR(300) | AppToken de la API VTEX para esta cuenta |
+| `VtexGetOrdersUrl` | VARCHAR(200) | URL del endpoint de órdenes VTEX. Ej: `https://mitienda.vtexcommercestable.com.br/api/oms/pvt/orders` |
 | `FechaAlta` | DATETIME | Fecha de alta del registro |
 | `Activo` | BIT | Habilita/deshabilita el cliente |
+
+> **Nota:** Los campos `VtexBaseUrl`, `VtexAppKey`, `VtexAppToken` y `VtexGetOrdersUrl` son opcionales si se definen las variables de entorno VTEX de fallback en el `.env`. Para instalaciones multi-tienda se recomienda completarlos directamente en la tabla.
 
 ### `PedidosDesdeVtex`
 
