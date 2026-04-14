@@ -48,6 +48,11 @@ const PedidosDesdeVtex = sequelize.define(
       type: DataTypes.STRING(24),
       allowNull: true,
     },
+    InvoiceEnviado: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+    },
   },
   {
     tableName: "PedidosDesdeVtex", // nombre exacto de la tabla en SQL

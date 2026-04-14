@@ -1,5 +1,7 @@
 import axios from 'axios'
+import { QueryTypes } from 'sequelize'
 import config from '../config/index.js'
+import sequelize from '../db/sequelize.js'
 
 const API_URL = config.andesmar.calcularMontoUrl
 
@@ -75,4 +77,32 @@ export async function insertarPedido(payload, usuario, clave) {
   console.log('[ANDESMAR] Respuesta:', JSON.stringify(data, null, 2))
 
   return data
+}
+
+/**
+ * Ejecuta el SP GetEstadosVtexPendientes y devuelve todos los estados
+ * de envíos de Andesmar que aún no fueron enviados a VTEX.
+ *
+ * @returns {Array<{ description, trackingNumber, date, GuiaID, OrderId, city, state, trackingUrl, isDelivered, enviado }>}
+ */
+export async function getEstadosPendientes() {
+  const results = await sequelize.query(
+    'EXEC GetEstadosVtexPendientes',
+    { type: QueryTypes.SELECT }
+  )
+  return results
+}
+
+/**
+ * Registra un estado como enviado en la tabla EnvioEstadosVtex de Andesmar.
+ * El SP GetEstadosVtexPendientes excluirá este registro en futuras corridas.
+ *
+ * @param {number} guiaId
+ * @param {string} estado  - e.g. 'ENTREGADO', 'ENVIAJE', etc.
+ */
+export async function marcarEstadoEnviado(guiaId, estado) {
+  await sequelize.query(
+    'INSERT INTO EnvioEstadosVtex (GuiaID, Estado, FechaEnvio) VALUES (:guiaId, :estado, GETDATE())',
+    { replacements: { guiaId, estado }, type: QueryTypes.INSERT }
+  )
 }
