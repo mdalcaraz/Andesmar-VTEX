@@ -20,26 +20,20 @@ function groupBy(rows, key) {
 /**
  * Arma el payload del invoice para VTEX.
  * El número de guía de Andesmar (trackingCode) actúa como invoiceNumber.
+ * VTEX acepta items vacío — todos los datos vienen del SP.
  *
- * @param {object} fullOrder  - Objeto parseado de PedidosDesdeVtex.JsonCompleto
  * @param {string} trackingCode - Número de guía Andesmar (ej: "R527913138")
  */
-function buildInvoicePayload(fullOrder, trackingCode) {
-  const items = (fullOrder.items ?? []).map((item) => ({
-    id: String(item.id ?? item.refId ?? ''),
-    quantity: item.quantity ?? 1,
-    price: item.price ?? 0,
-  }))
-
+function buildInvoicePayload(trackingCode) {
   return {
     type: 'Output',
     issuanceDate: new Date().toISOString().slice(0, 10),
     invoiceNumber: trackingCode,
-    invoiceValue: fullOrder.value ?? 0,
+    invoiceValue: 0,
     courier: 'Andesmar',
     trackingNumber: trackingCode,
     trackingUrl: `https://tracking.andesmar.com/${trackingCode}`,
-    items,
+    items: [],
   }
 }
 
@@ -124,8 +118,7 @@ export async function updateVtexOrdersStatus() {
 
       // 3. POST invoice si todavía no se envió para esta orden
       if (!pedido.InvoiceEnviado) {
-        const fullOrder = JSON.parse(pedido.JsonCompleto)
-        const invoicePayload = buildInvoicePayload(fullOrder, trackingCode)
+        const invoicePayload = buildInvoicePayload(trackingCode)
 
         console.log(`${LOG} POST invoice orderId=${orderId} invoiceNumber=${trackingCode}:`, JSON.stringify(invoicePayload))
 

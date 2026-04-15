@@ -90,6 +90,11 @@ export async function getEstadosPendientes() {
     'EXEC GetEstadosVtexPendientes',
     { type: QueryTypes.SELECT }
   )
+  if (!results.length) {
+    console.log('[SP GetEstadosVtexPendientes] Sin registros pendientes.')
+  } else {
+    console.log(`[SP GetEstadosVtexPendientes] ${results.length} registro(s):`, JSON.stringify(results))
+  }
   return results
 }
 

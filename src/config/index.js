@@ -15,6 +15,7 @@ export default {
   db: {
     host: env("DB_HOST", "localhost"),
     instance: env("DB_INSTANCE", ""),
+    port: Number(env("DB_PORT", 1433)),
     database: env("DB_NAME", "my_app_db"),
     username: env("DB_USER", "sa"),
     password: env("DB_PASSWORD", ""),
